@@ -1,14 +1,15 @@
-import OpenAI from 'openai';
+// api/vera.js
+const { OpenAI } = require('openai');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Only POST requests allowed' });
   }
 
   try {
-    const { message } = req.body || {};
+    const { message, context, personality } = req.body || {};
 
     if (!message) {
       return res.status(400).json({ error: 'Missing message in body' });
