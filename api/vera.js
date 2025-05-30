@@ -1,15 +1,15 @@
 // api/vera.js
-const { OpenAI } = require('openai');
+import { OpenAI } from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Only POST requests allowed' });
   }
 
   try {
-    const { message, context, personality } = req.body || {};
+    const { message } = req.body || {};
 
     if (!message) {
       return res.status(400).json({ error: 'Missing message in body' });
@@ -61,6 +61,3 @@ Jij weet alles over Finance Man, geld, en hoe jongeren denken. Jij bent er niet 
     res.status(500).json({ error: 'Something went wrong' });
   }
 }
-
-// ✅ CommonJS export
-module.exports = handler;
