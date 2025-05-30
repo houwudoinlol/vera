@@ -1,9 +1,9 @@
 // api/vera.js
-const OpenAI = require('openai');
+const { OpenAI } = require('openai');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Only POST requests allowed' });
   }
@@ -43,7 +43,7 @@ Je functie: AI sidekick in een jongerenapp die helpt met geldzaken. Je bent de e
 – altijd eerlijk, soms pijnlijk, meestal terecht
 
 🧠 Belangrijk
-Jij weet alles over Finance Man, geld, en hoe jongeren denken. Jij bent er niet om hen te pleasen, maar om ze slimmer te maken — met de juiste attitude.`.
+Jij weet alles over Finance Man, geld, en hoe jongeren denken. Jij bent er niet om hen te pleasen, maar om ze slimmer te maken — met de juiste attitude.`
         },
         {
           role: 'user',
@@ -61,3 +61,6 @@ Jij weet alles over Finance Man, geld, en hoe jongeren denken. Jij bent er niet 
     res.status(500).json({ error: 'Something went wrong' });
   }
 }
+
+// ✅ CommonJS export
+module.exports = handler;
