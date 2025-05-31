@@ -1,7 +1,7 @@
 // api/vera.js
 
 export default async function handler(req, res) {
-  // 1️⃣ CORS-headers om Lovable en elke frontend toe te staan
+  // 1️⃣ CORS-headers zodat Lovable de functie mag aanroepen:
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -12,16 +12,15 @@ export default async function handler(req, res) {
     return res.status(405).end('Only POST allowed');
   }
 
-  // 2️⃣ Body parsing (Vercel parseert soms niet automatisch)
+  // 2️⃣ Body parsing (handmatig):
   let body;
   try {
     if (req.body && typeof req.body === 'object') {
       body = req.body;
     } else {
-      // Handmatig uitlezen
       const text = await new Promise((resolve, reject) => {
         let data = '';
-        req.on('data', chunk => data += chunk);
+        req.on('data', chunk => (data += chunk));
         req.on('end', () => resolve(data));
         req.on('error', err => reject(err));
       });
@@ -34,22 +33,27 @@ export default async function handler(req, res) {
 
   const { message } = body;
   if (!message) {
-    return res.status(400).json({ error: 'Missing \"message\" field' });
+    return res.status(400).json({ error: 'Missing "message" field' });
   }
 
-  // 3️⃣ Roep de Assistants-API rechtstreeks aan via fetch
+  // 3️⃣ Roep de Assistant correct aan via /messages:
   try {
-    const ASSISTANT_ID = 'asst_BCKzcpy9RDonm59QlgNHSB1h'; // jouw Assistant ID
+    const ASSISTANT_ID = 'asst_BCKzcpy9RDonm59QlgNHSB1h';  // jouw Assistant-ID
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    const endpoint = `https://api.openai.com/v1/assistants/${ASSISTANT_ID}/runs`;
+    const endpoint = `https://api.openai.com/v1/assistants/${ASSISTANT_ID}/messages`;
 
+    // Bij /messages verwachten we een array met { role, content }:
     const apiResponse = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ input: message })
+      body: JSON.stringify({
+        messages: [
+          { role: 'user', content: message }
+        ]
+      })
     });
 
     if (!apiResponse.ok) {
@@ -59,13 +63,16 @@ export default async function handler(req, res) {
     }
 
     const runResponse = await apiResponse.json();
-    const aiMessage =
-      runResponse.choices?.[0]?.message?.content?.trim()
+    // De nieuwe Assistant-API stuurt meestal een 'messages' array terug:
+    //   runResponse.messages is een array, waarbij het laatste element 
+    //   { role: "assistant", content: "…" } is.
+    const lastMessage = runResponse.messages?.[runResponse.messages.length - 1];
+    const aiMessage = lastMessage?.content?.trim()
       || 'Sorry, Vera kan nu even niet antwoorden.';
 
     return res.status(200).json({ response: aiMessage });
   } catch (err) {
-    console.error('Fetch to Assistant endpoint failed:', err);
+    console.error('Fetch to Assistant /messages failed:', err);
     return res.status(500).json({ error: 'Assistant fetch failed' });
   }
 }
