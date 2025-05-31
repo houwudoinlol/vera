@@ -2,16 +2,17 @@
 
 import OpenAI from "openai";
 
-// Let op: je SDK moet versie ≥ 4.31.0 zijn.
-// In package.json: "openai": "^4.32.0" (of hoger).
-// Vercel moet dan exact die versie installeren (inclusief package-lock.json).
+// Maak zeker dat in package.json:
+// "openai": "^4.32.0"
+// én dat in Vercel - Settings → Environment Variables -
+// OPENAI_API_KEY correct staat (sk-…).
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
 export default async function handler(req, res) {
-  // ─── 1) CORS ──────────────────────────────────────────────────────────
+  // ─── CORS ─────────────────────────────────────────────────────────
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -22,7 +23,7 @@ export default async function handler(req, res) {
     return res.status(405).end("Only POST allowed");
   }
 
-  // ─── 2) Body parsing (handmatig, want Vercel parse klopt niet altijd) ─
+  // ─── Body parse ────────────────────────────────────────────────────
   let body;
   try {
     if (req.body && typeof req.body === "object") {
@@ -43,32 +44,29 @@ export default async function handler(req, res) {
 
   const { message } = body;
   if (!message) {
-    return res.status(400).json({ error: 'Missing "message" field' });
+    return res
+      .status(400)
+      .json({ error: 'Missing "message" field in request body' });
   }
 
-  // ─── 3) Oproepen van je Assistant via chat.completions ────────────────
+  // ─── Roep jouw “Assistant” als model aan ───────────────────────────
   try {
-    // Zet hier wél jouw Assistant-ID
-    const ASSISTANT_ID = "asst_BCKzcpy9RDonm59QlgNHSB1h";
-
-    // We vullen een standaard chat-completion:
+    const ASSISTANT_ID = "asst_BCKzcpy9RDonm59QlgNHSB1h"; // jouw gekopieerde ID
     const completion = await openai.chat.completions.create({
       model: ASSISTANT_ID,
       messages: [
-        // altijd minstens één “user” message nodig
         { role: "user", content: message }
       ]
-      // (je kunt hier eventueel nog temperature, max_tokens, enz. instellen)
+      // je kunt eventueel temperature, max_tokens, etc. toevoegen hier
     });
 
-    // De API returnt choices[0].message.content
     const aiMessage =
       completion.choices?.[0]?.message?.content?.trim() ||
-      "Sorry, Vera kan nu even niet antwoorden.";
+      "Sorry, ik kan nu even niet antwoorden.";
 
     return res.status(200).json({ response: aiMessage });
   } catch (err) {
     console.error("OpenAI Assistant error:", err);
-    return res.status(500).json({ error: "OpenAI Assistant call failed" });
+    return res.status(500).json({ error: "Assistant call failed" });
   }
 }
