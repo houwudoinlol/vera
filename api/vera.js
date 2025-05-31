@@ -2,35 +2,30 @@
 
 import { OpenAI } from 'openai';
 
-// Maak hier je OpenAI-client aan met je API-sleutel uit Vercel's env-vars
+// Initialiseer OpenAI met je API-sleutel (env-var in Vercel)
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
 export default async function handler(req, res) {
-  // ===== CORS-headers (zodat Lovable/ieder frontend-domain mag posten) =====
+  // ===== CORS-headers =====
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  // Always reply OK to preflight OPTIONS
   if (req.method === 'OPTIONS') {
+    // Preflight-verzoek beantwoorden
     return res.status(200).end();
   }
-  
-  // Alleen POST-requests toestaan
   if (req.method !== 'POST') {
     return res.status(405).end('Only POST allowed');
   }
 
-  // ===== Body-manipulatie: handmatig JSON inlezen =====
+  // ===== Body parsing =====
   let body;
   try {
-    // Als Vercel req.body al parsed als object, gebruik dat
     if (req.body && typeof req.body === 'object') {
       body = req.body;
     } else {
-      // Anders buffer de inkomende data en parse naar JSON
       const text = await new Promise((resolve, reject) => {
         let data = '';
         req.on('data', (chunk) => data += chunk);
@@ -40,7 +35,7 @@ export default async function handler(req, res) {
       body = JSON.parse(text);
     }
   } catch (err) {
-    console.error('Invalid JSON received:', err);
+    console.error('Invalid JSON:', err);
     return res.status(400).json({ error: 'Invalid JSON' });
   }
 
@@ -49,23 +44,24 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing "message" field' });
   }
 
-  // ===== Roep jouw OpenAI Agent aan =====
   try {
-    // Vervang hieronder door jouw exacte Agent ID:
-    const agentId = 'asst_BCKzcpy9RDonm59QlgNHSB1h';
+    // ===== Roep je Assistant aan =====
+    const assistantId = 'asst_BCKzcpy9RDonm59QlgNHSB1h'; // jouw Assistant ID
 
-    const runResponse = await openai.agent.runs.create({
-      agent: agentId,
+    const runResponse = await openai.assistants.runs.create({
+      assistant: assistantId,
       input: message
     });
 
-    // De Agent-response zit in runResponse.choices[0].message.content
-    const aiMessage = runResponse.choices?.[0]?.message?.content?.trim()
-                     || 'Sorry, Vera kan nu niet antwoorden.';
+    // In de response vind je de tekst in:
+    // runResponse.choices[0].message.content
+    const aiMessage =
+      runResponse.choices?.[0]?.message?.content?.trim()
+      || 'Sorry, ik kan nu even niet antwoorden.';
 
     return res.status(200).json({ response: aiMessage });
   } catch (err) {
-    console.error('OpenAI Agent error:', err);
-    return res.status(500).json({ error: 'OpenAI Agent call failed' });
+    console.error('OpenAI Assistant error:', err);
+    return res.status(500).json({ error: 'OpenAI Assistant call failed' });
   }
 }
